@@ -31,6 +31,9 @@
 const char* ssid = "Home_2G_4";
 const char* password = "29446421";
 const char* mqtt_server = "192.168.80.111";
+const char* outTopic = "WEMOS_1/outTopic/temperature";
+const char* inTopic = "WEMOS_1/inTopic/temperature";
+const char* hostName = "WEMOS_1";
 float powervoltage=5;//define the power supply voltage.
 
 WiFiClient espClient;
@@ -47,7 +50,7 @@ void setup_wifi() {
   Serial.print("Connecting to ");
   Serial.println(ssid);
 
-  WiFi.hostname("ESP8266_1");
+  WiFi.hostname(hostName);
   WiFi.begin(ssid, password);
 
   while (WiFi.status() != WL_CONNECTED) {
@@ -94,9 +97,9 @@ void reconnect() {
     if (client.connect(clientId.c_str())) {
       Serial.println("connected");
       // Once connected, publish an announcement...
-      client.publish("outTopic/temperature", "Reconnected");
+      client.publish(outTopic, "Reconnected");
       // ... and resubscribe
-      client.subscribe("inTopic/temperature");
+      client.subscribe(inTopic);
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -135,7 +138,7 @@ void loop() {
     snprintf (msg, 75, "The room temperature degree is: %lf", temperature);
     Serial.print("Publish message: ");
     Serial.println(msg);
-    client.publish("outTopic/temperature", msg);
+    client.publish(outTopic, msg);
     
     
   }
