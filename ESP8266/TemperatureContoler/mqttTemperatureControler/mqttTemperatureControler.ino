@@ -25,22 +25,53 @@
 
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
+#include <ArduinoJson.h>
+#include "DHT.h"
 
 // Update these with values suitable for your network.
 
 const char* ssid = "Home_2G_4";
 const char* password = "29446421";
-const char* mqtt_server = "192.168.80.111";
-const char* outTopic = "WEMOS_1/outTopic/temperature";
-const char* inTopic = "WEMOS_1/inTopic/temperature";
-const char* hostName = "WEMOS_1";
+const char* mqtt_server = "192.168.80.103";
+const char* MQTT_SENSOR_TOPIC = "office/sensor1";
+const char* inTopic = "WEMOS_4/inTopic/temperature";
+const char* hostName = "WEMOS_4";
 float powervoltage=5;//define the power supply voltage.
+
+// DHT - D1/GPIO5
+#define DHTPIN D4
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
 
 WiFiClient espClient;
 PubSubClient client(espClient);
 long lastMsg = 0;
-char msg[50];
+char msg[100];
 int value = 0;
+
+// function called to publish the temperature and the humidity
+void publishData(float p_temperature, float p_humidity) {
+  // create a JSON object
+  // doc : https://github.com/bblanchon/ArduinoJson/wiki/API%20Reference
+  StaticJsonBuffer<200> jsonBuffer;
+  JsonObject& root = jsonBuffer.createObject();
+  // INFO: the data must be converted into a string; a problem occurs when using floats...
+  root["temperature"] = (String)p_temperature;
+  root["humidity"] = (String)p_humidity;
+  root.prettyPrintTo(Serial);
+  Serial.println("");
+  /*
+     {
+        "temperature": "23.20" ,
+        "humidity": "43.70"
+     }
+  */
+  char data[200];
+  root.printTo(data, root.measureLength() + 1);
+  client.publish(MQTT_SENSOR_TOPIC, data, true);
+  yield();
+}
+
 
 void setup_wifi() {
 
@@ -91,13 +122,13 @@ void reconnect() {
   while (!client.connected()) {
     Serial.print("Attempting MQTT connection...");
     // Create a random client ID
-    String clientId = "ESP8266Client-";
+    String clientId = "WEMOS4-";
     clientId += String(random(0xffff), HEX);
     // Attempt to connect
     if (client.connect(clientId.c_str())) {
       Serial.println("connected");
       // Once connected, publish an announcement...
-      client.publish(outTopic, "Reconnected");
+      client.publish(MQTT_SENSOR_TOPIC, "Reconnected");
       // ... and resubscribe
       client.subscribe(inTopic);
     } else {
@@ -119,8 +150,7 @@ void setup() {
 }
 
 void loop() {
-  float temperature;
-  
+    
   if (!client.connected()) {
     reconnect();
   }
@@ -130,16 +160,24 @@ void loop() {
   if (now - lastMsg > 2000) {
     lastMsg = now;
     ++value;
-    float sensorValue = analogRead(A0);
-    temperature=(sensorValue/1023)*powervoltage*100;
+
+    // Reading temperature or humidity takes about 250 milliseconds!
+    // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
+    float h = dht.readHumidity();
+    // Read temperature as Celsius (the default)
+    float t = dht.readTemperature();
+     if (isnan(h) || isnan(t)) {
+        Serial.println("Failed to read from DHT sensor!");
+        return;
+     }
+
+    
     Serial.print("The room temperature degree is:");
-    Serial.println(temperature,1);
+    Serial.println(t,1);
+     
     
-    snprintf (msg, 75, "The room temperature degree is: %lf", temperature);
-    Serial.print("Publish message: ");
-    Serial.println(msg);
-    client.publish(outTopic, msg);
-    
+    //publishData(temperature, 0);    
+    publishData(t, h);    
     
   }
 }
