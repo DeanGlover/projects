@@ -1,4 +1,4 @@
-// add some code corrected comment 
+// Start to do some real work with this repo
 void setup() {
   // put your setup code here, to run once:
 
