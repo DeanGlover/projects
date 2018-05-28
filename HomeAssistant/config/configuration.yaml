@@ -1,0 +1,212 @@
+homeassistant:
+  # Name of the location where Home Assistant is running
+  name: Home
+  # Location required to calculate the time the sun rises and sets
+  latitude: -27.5322
+  longitude: 153.2289
+  # Impacts weather/sunrise data (altitude above sea level in meters)
+  elevation: 0
+  # metric for Metric, imperial for Imperial
+  unit_system: metric
+  # Pick yours from here: http://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+  time_zone: Australia/Brisbane
+  # Customization file
+  customize: !include customize.yaml
+
+# Show links to resources in log and frontend
+# introduction:
+
+# Enables the frontend
+frontend:
+
+# Enables configuration UI
+config:
+
+# Enable logging
+logger:
+
+http:
+  # Secrets are defined in the file secrets.yaml
+  # api_password: !secret http_password
+  # Uncomment this if you are using SSL/TLS, running in Docker container, etc.
+  # base_url: example.duckdns.org:8123
+
+# Checks for available updates
+# Note: This component will send some information about your system to
+# the developers to assist with development of Home Assistant.
+# For more information, please see:
+# https://home-assistant.io/blog/2016/10/25/explaining-the-updater/
+updater:
+  # Optional, allows Home Assistant developers to focus on popular components.
+  # include_used_components: true
+
+# Discover some devices automatically
+discovery:
+
+# Allows you to issue voice commands from the frontend in enabled browsers
+conversation:
+
+# Enables support for tracking state changes over time
+history:
+
+# View all events in a logbook
+logbook:
+
+# Enables a map showing the location of tracked devices
+map:
+
+# Track the sun
+sun:
+
+# Weather prediction
+sensor:
+  - platform: yr
+  - platform: plex
+
+  - platform: bom
+    station: IDQ60901.94561
+    name: Alexandra Hills
+    monitored_conditions:
+      - apparent_t
+      - cloud
+      - cloud_base_m
+      - cloud_oktas
+      - cloud_type_id
+      - cloud_type
+      - delta_t
+      - gust_kmh
+      - gust_kt
+      - air_temp
+      - dewpt
+      - press
+      - press_qnh
+      - press_msl
+      - press_tend
+      - rain_trace
+      - rel_hum
+      - sea_state
+      - swell_dir_worded
+      - swell_height
+      - swell_period
+      - vis_km
+      - weather
+      - wind_dir
+      - wind_spd_kmh
+      - wind_spd_kt
+      
+sensor 1:
+  platform: mqtt
+  state_topic: 'office/sensor1'
+  name: 'Temperature'
+  unit_of_measurement: '°C'
+  value_template: '{{ value_json.temperature }}'
+    
+sensor 2:
+  platform: mqtt
+  state_topic: 'office/sensor1'
+  name: 'Humidity'
+  unit_of_measurement: '%'
+  value_template: '{{ value_json.humidity }}'
+
+sensor 3:
+  - platform: mqtt
+    name: "Tele Temperature"
+    state_topic: "tele/wemos1/SENSOR"
+#    value_template: "{{ value_json['DHT22'].Temperature }}"
+    value_template: '{{ value_json["DHT11"]["Temperature"] }}'
+    unit_of_measurement: "°C"
+  - platform: mqtt
+    name: "Tele Humidity"
+    state_topic: "tele/wemos1/SENSOR"
+#    value_template: "{{ value_json['DHT22'].Humidity }}"
+    value_template: '{{ value_json["DHT11"]["Humidity"] }}'
+    unit_of_measurement: "%"
+# sensor 3:
+#  platform: mqtt
+#  state_topic: "tele/wemos1/SENSOR"
+#  name: 'Temperature' 
+#  unit_of_measurement: 'C' 
+#  value_template: '{{ value_json["DHT11"]["Temperature"] }}'
+
+#sensor 5:
+#  platform: mqtt
+#  state_topic: "tele/wemos1/SENSOR"
+#  name: 'Humidity' 
+#  unit_of_measurement: '%' 
+#  value_template: '{{ value_json["DHT11"]["Humidity"] }}'
+
+sensor 4:  
+  - platform: mqtt 
+    state_topic: "WEMOS_4/outTopic/temperature"
+    name: 'Temperature1' 
+    unit_of_measurement: 'C' 
+    value_template: "{{value_json.DHT11.Temperature}}"
+    
+      
+binary_sensor: 
+  - platform: mqtt 
+    state_topic: "cmnd/D1mini01PIR/POWER" 
+    name: "D1 PIR"
+
+
+# Text to speech
+tts:
+  - platform: google
+
+# Cloud
+cloud:
+
+group: !include groups.yaml
+automation: #!include automations.yaml
+- alias: 'D1 motion OFF' 
+  trigger:
+    - platform: state 
+      entity_id: binary_sensor.d1_pir 
+      from: 'on' 
+      to: 'off' 
+#      for: '00:05:00' 
+  action: 
+    - service: light.turn_off 
+      data: 
+        entity_id: light.d1mini_ws2812
+  
+- alias: 'Refresh MQTT Switches'
+  trigger:
+    - platform: homeassistant
+      event: start
+  action:
+    - service: mqtt.publish
+      data:
+        topic: cmnd/sonoffs/POWER
+
+script: !include scripts.yaml
+
+panel_iframe:
+  configurator:
+    title: Configurator
+    icon: mdi:wrench
+    url: http://hassio.local:3218
+
+# Example configuration.yaml entry
+mqtt:
+  broker: core-mosquitto
+
+switch: 
+  - platform: mqtt
+    name: "Sonoff Switch 01" 
+    command_topic: "cmnd/sonoff1/power" 
+    state_topic: "stat/sonoff1/POWER"
+    qos: 1 
+    payload_on: "ON" 
+    payload_off: "OFF"
+    retain: true
+ 
+  - platform: mqtt
+    name: "Sonoff Switch 02" 
+    command_topic: "cmnd/sonoff21/power" 
+    state_topic: "stat/sonoff21/POWER"
+    qos: 1 
+    payload_on: "ON" 
+    payload_off: "OFF"
+    retain: true
+    
