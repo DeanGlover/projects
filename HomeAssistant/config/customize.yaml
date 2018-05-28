@@ -1,0 +1,6 @@
+  sensor.bom_alexandra_hills_cloud:
+    friendly_name: Cloud Cover
+    hidden: 
+
+  binary_sensor.d1_pir: 
+    device_class: motion
