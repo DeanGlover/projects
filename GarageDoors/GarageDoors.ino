@@ -38,23 +38,36 @@ const boolean activeHighRelay = ACTIVE_HIGH_RELAY;
 const char* door1_alias = DOOR1_ALIAS;
 const char* mqtt_door1_action_topic = MQTT_DOOR1_ACTION_TOPIC;
 const char* mqtt_door1_status_topic = MQTT_DOOR1_STATUS_TOPIC;
+const char* mqtt_door1_status_open_topic = MQTT_DOOR1_STATUS_OPEN_TOPIC;
+const char* mqtt_door1_status_close_topic = MQTT_DOOR1_STATUS_CLOSE_TOPIC;
 const int door1_openPin = DOOR1_OPEN_PIN;
 const int door1_closePin = DOOR1_CLOSE_PIN;
 const int door1_statusPin = DOOR1_STATUS_PIN;
 const char* door1_statusSwitchLogic = DOOR1_STATUS_SWITCH_LOGIC;
+const int door1_sensor_openPin = DOOR1_OPEN_SENSOR;
+const int door1_sensor_closePin = DOOR1_CLOSE_SENSOR;
+const char* door1_sensor_open_alias = DOOR1_SENSOR_OPEN_ALIAS;
 
 const boolean door2_enabled = DOOR2_ENABLED;
 const char* door2_alias = DOOR2_ALIAS;
 const char* mqtt_door2_action_topic = MQTT_DOOR2_ACTION_TOPIC;
 const char* mqtt_door2_status_topic = MQTT_DOOR2_STATUS_TOPIC;
+const char* mqtt_door2_status_open_topic = MQTT_DOOR2_STATUS_OPEN_TOPIC;
+const char* mqtt_door2_status_close_topic = MQTT_DOOR2_STATUS_CLOSE_TOPIC;
 const int door2_openPin = DOOR2_OPEN_PIN;
 const int door2_closePin = DOOR2_CLOSE_PIN;
 const int door2_statusPin = DOOR2_STATUS_PIN;
-const char* door2_statusSwitchLogic = DOOR2_STATUS_SWITCH_LOGIC;
+const int door2_sensor_closePin = DOOR2_CLOSE_SENSOR;
+const int door2_sensor_openPin = DOOR2_OPEN_SENSOR;
+const char* door2_sensor_open_alias = DOOR2_SENSOR_OPEN_ALIAS;
 
 const int relayActiveTime = 500;
 int door1_lastStatusValue = 2;
 int door2_lastStatusValue = 2;
+int door1_OpenSensorStatusValue = 0;
+int door1_CloseSensorStatusValue = 0;
+int door2_OpenSensorStatusValue = 0;
+int door2_CloseSensorStatusValue = 0;
 unsigned long door1_lastSwitchTime = 0;
 unsigned long door2_lastSwitchTime = 0;
 int debounceTime = 2000;
@@ -157,6 +170,8 @@ void publish_door1_status() {
 }
 
 void publish_door2_status() {
+  do sensore too
+
   if (digitalRead(door2_statusPin) == LOW) {
     if (door2_statusSwitchLogic == "NO") {
       Serial.print(door2_alias);
@@ -223,6 +238,64 @@ void check_door2_status() {
   }
 }
 
+// Function to read door sensor status
+void check_door_sensor_status(int door) {
+    if (door == DOOR1) {
+        door1_OpenSensorStatusValue = 0;
+        door1_CloseSensorStatusValue = 0;
+        if (digitalRead(door1_sensor_openPin) == HIGH) {
+            Serial.print(door1_sensore_open_alias);
+            Serial.print(" closed! Publishing to ");
+            Serial.print(mqtt_door1_status_open_topic);
+            Serial.println("...");
+            client.publish(mqtt_door1_status_open_topic, " sensor closed", true);
+            door1_OpenSensorStatusValue = 1;
+        } 
+        else {
+           if (digitalRead(door1_sensor_closePin) == HIGH) {
+              Serial.print(door1_sensore_open_alias);
+              Serial.print(" closed! Publishing to ");
+              Serial.print(mqtt_door1_status_close_topic);
+              Serial.println("...");
+              client.publish(mqtt_door1_status_close_topic, "sensor closed", true);
+              door1_CloseSensorStatusValue = 1
+           }
+           else {
+            Serial.print(" Error reading door status ");
+            Serial.print(mqtt_door1_status_topic);
+            Serial.println("...");
+            client.publish(mqtt_door1_status_topic, " door sensor not known", true);
+        }
+     }
+     else {
+        door2_OpenSensorStatusValue = 0;
+        door2_CloseSensorStatusValue = 0;
+        if (digitalRead(door2_sensor_openPin) == HIGH) {
+            Serial.print(door2_sensore_open_alias);
+            Serial.print(" closed! Publishing to ");
+            Serial.print(mqtt_door2_status_open_topic);
+            Serial.println("...");
+            client.publish(mqtt_door2_status_open_topic, " sensor closed", true);
+            door2_OpenSensorStatusValue = 1;
+        } 
+        else {
+           if (digitalRead(door2_sensor_closePin) == HIGH) {
+              Serial.print(door2_sensore_open_alias);
+              Serial.print(" closed! Publishing to ");
+              Serial.print(mqtt_door2_status_close_topic);
+              Serial.println("...");
+              client.publish(mqtt_door2_status_close_topic, "sensor closed", true);
+              door2_CloseSensorStatusValue = 1
+           }
+           else {
+            Serial.print(" Error reading door status ");
+            Serial.print(mqtt_door2_status_topic);
+            Serial.println("...");
+            client.publish(mqtt_door2_status_topic, " door sensor not known", true);
+        }
+     }
+}
+
 // Function that publishes birthMessage
 
 void publish_birth_message() {
@@ -237,7 +310,10 @@ void publish_birth_message() {
 
 // Function that toggles the relevant relay-connected output pin
 
-void toggleRelay(int pin) {
+void toggleRelay(int pin, int sensor) {
+  // do until publish_door1_status() = open or relayActiveTime;
+  // TO DO
+  do until check_door_sensor_status(sensor)
   if (activeHighRelay) {
     digitalWrite(pin, HIGH);
     delay(relayActiveTime);
@@ -258,13 +334,13 @@ void triggerDoorAction(String requestedDoor, String requestedAction) {
     Serial.print("Triggering ");
     Serial.print(door1_alias);
     Serial.println(" OPEN relay!");
-    toggleRelay(door1_openPin);
+    toggleRelay(door1_openPin, door1_sensor_openPin);
   }
   else if (requestedDoor == mqtt_door1_action_topic && requestedAction == "CLOSE") {
     Serial.print("Triggering ");
     Serial.print(door1_alias);
     Serial.println(" CLOSE relay!");
-    toggleRelay(door1_closePin);
+    toggleRelay(door1_closePin,door1_sensor_closePin);
   }
   else if (requestedDoor == mqtt_door1_action_topic && requestedAction == "STATE") {
     Serial.print("Publishing on-demand status update for ");
@@ -277,13 +353,13 @@ void triggerDoorAction(String requestedDoor, String requestedAction) {
     Serial.print("Triggering ");
     Serial.print(door2_alias);
     Serial.println(" OPEN relay!");
-    toggleRelay(door2_openPin);
+    toggleRelay(door2_openPin, door2_sensor_openPin);
   }
   else if (requestedDoor == mqtt_door2_action_topic && requestedAction == "CLOSE") {
     Serial.print("Triggering ");
     Serial.print(door2_alias);
     Serial.println(" CLOSE relay!");
-    toggleRelay(door2_closePin);
+    toggleRelay(door2_closePin, door2_sensor_closePin);
   }
   else if (requestedDoor == mqtt_door2_action_topic && requestedAction == "STATE") {
     Serial.print("Publishing on-demand status update for ");
@@ -345,6 +421,8 @@ void setup() {
   // Setup Door 1 pins
   pinMode(door1_openPin, OUTPUT);
   pinMode(door1_closePin, OUTPUT);
+  
+  
   // Set output pins LOW with an active-high relay
   if (activeHighRelay) {
     digitalWrite(door1_openPin, LOW);
@@ -359,7 +437,12 @@ void setup() {
   pinMode(door1_statusPin, INPUT_PULLUP);
   // Update variable with current door state
   door1_lastStatusValue = digitalRead(door1_statusPin);
+  door1_OpenSensorStatusValue = digitalRead(door1_sensor_openPin);
+  door1_CloseSensorStatusValue = digitalRead(door1_sensor_closePin);
+  door2_OpenSensorStatusValue = digitalRead(door2_sensor_openPin);
+  door2_CloseSensorStatusValue = digitalRead(door2_sensor_closePin);
 
+  
   // Setup Door 2 pins
   if (door2_enabled) {
     pinMode(door2_openPin, OUTPUT);
